@@ -28,6 +28,9 @@ class TaskExecuteCommand extends AbstractCommand<Bool> {
     }
 
     public function handle():Bool {
+        if(airpsx.utils.MaintenanceUtils.enabled())
+            return cast true;
+
         if(!taskMutex.tryAcquire())
         {
             trace("Task already running.");

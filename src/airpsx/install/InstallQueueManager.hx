@@ -90,7 +90,7 @@ class InstallQueueManager {
         try {
             while (true) {
                 var rs = DBStatic.query('SELECT id, source, name FROM install_queue WHERE status = \'pending\' ORDER BY id LIMIT 1');
-                if (!rs.hasNext())
+                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled())
                     break;
                 var job:Dynamic = rs.next();
                 var id:Int = job.id;

@@ -10,6 +10,8 @@ class TaskEvents {
 
     /** Fire all enabled tasks bound to `trigger`. `filter` is matched against triggerValue when the task sets one. */
     public static function fire(trigger:String, ?filter:String, ?extra:Map<String, Any>):Void {
+        if (airpsx.utils.MaintenanceUtils.enabled())
+            return;
         var db = DBStatic.connection(DatabaseType.TASK);
         var rows:Array<Dynamic> = [];
         var rs = db.query('SELECT id, type, script, logs, triggerValue FROM tasks WHERE enabled = 1 AND script <> "" AND triggerType = ? AND status = 0', trigger);
@@ -44,6 +46,9 @@ class TaskEvents {
                 fire(TaskTrigger.GAME_LAUNCH, titleID, ["titleID" => titleID]);
             lastTitleID = titleID;
         }
+
+        if (airpsx.utils.MaintenanceUtils.enabled())
+            return;
 
         // temp_above fires once per task on the rising edge and re-arms when the temperature drops below its threshold.
         var db = DBStatic.connection(DatabaseType.TASK);

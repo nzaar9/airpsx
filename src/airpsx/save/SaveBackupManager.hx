@@ -43,7 +43,7 @@ class SaveBackupManager {
     /** Called every minute by the scheduler. */
     public static function tick():Void {
         var cfg = config();
-        if (!cfg.enabled)
+        if (!cfg.enabled || airpsx.utils.MaintenanceUtils.enabled())
             return;
         var last = Std.parseFloat(cfg.lastRun);
         if (!Math.isNaN(last) && Sys.time() - last < cfg.intervalHours * 3600)

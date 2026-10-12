@@ -33,6 +33,7 @@ class ApiDocsHandler extends AbstractHandler {
         {m: "GET", p: "/save/backups/list", d: "Save backups"},
         {m: "POST", p: "/save/backups/restore", d: "Restore a save backup: {id, profileId?}"},
         {m: "POST", p: "/save/backups/delete", d: "Delete a save backup: {id}"},
+        {m: "POST", p: "/system/maintenance", d: "Maintenance mode (pauses tasks, backups, install/decrypt queues): {enabled?}"},
         {m: "POST", p: "/process/kill", d: "Signal a process: {pid, force?}"},
         {m: "POST", p: "/app/uninstall/{titleId}", d: "Uninstall a title"}
     ];

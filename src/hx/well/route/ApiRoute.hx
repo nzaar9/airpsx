@@ -60,6 +60,7 @@ import hx.well.handler.filesystem.FileSystemHexHandler;
 import hx.well.handler.ProcessKillHandler;
 import hx.well.handler.ApiDocsHandler;
 import hx.well.handler.application.ApplicationUninstallHandler;
+import hx.well.handler.system.MaintenanceHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -308,6 +309,9 @@ class ApiRoute extends RouteGroup {
                 .handler(new DecryptCancelHandler());
         });
         #end
+
+        Route.post("/system/maintenance")
+            .handler(new MaintenanceHandler());
 
         Route.post("/server/kill")
             .handler(new KillServerHandler());
