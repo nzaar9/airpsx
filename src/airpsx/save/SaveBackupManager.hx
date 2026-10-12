@@ -117,7 +117,7 @@ class SaveBackupManager {
 
     // Keeps the newest `keep` successful backups of the same scope (same profile filter) in this destination.
     static function prune(dir:String, keep:Int, profile:String):Void {
-        if (keep == null || keep < 1)
+        if (keep < 1)
             return;
         var rs = DBStatic.query('SELECT id, path FROM save_backups WHERE status = \'done\' AND profileId = ? ORDER BY id DESC LIMIT -1 OFFSET ?', profile, keep);
         var old:Array<Dynamic> = [];
