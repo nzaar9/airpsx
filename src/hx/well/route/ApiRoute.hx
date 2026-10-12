@@ -38,6 +38,10 @@ import hx.well.handler.stats.AlertSettingsHandler;
 import hx.well.handler.decrypt.DecryptEnqueueHandler;
 import hx.well.handler.decrypt.DecryptListHandler;
 import hx.well.handler.decrypt.DecryptCancelHandler;
+import hx.well.handler.pkg.InstallQueueAddHandler;
+import hx.well.handler.pkg.InstallQueueListHandler;
+import hx.well.handler.pkg.InstallQueueCancelHandler;
+import hx.well.handler.pkg.PackagePreviewHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -85,6 +89,18 @@ class ApiRoute extends RouteGroup {
 
             Route.post("/install")
                 .handler(new InstallPackageHandler());
+
+            Route.post("/preview")
+                .handler(new PackagePreviewHandler());
+
+            Route.post("/queue/add")
+                .handler(new InstallQueueAddHandler());
+
+            Route.get("/queue/list")
+                .handler(new InstallQueueListHandler());
+
+            Route.post("/queue/cancel")
+                .handler(new InstallQueueCancelHandler());
         });
 
         Route.path("/fs").group(() -> {

@@ -40,6 +40,10 @@ class SetupDatabaseCommand extends AbstractCommand<Bool> {
         // SELF decrypt jobs; status survives restarts so interrupted jobs can resume
         db.request("CREATE TABLE IF NOT EXISTS decrypt_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, output TEXT, status TEXT DEFAULT 'pending', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
         db.request("UPDATE decrypt_jobs SET status = 'pending' WHERE status = 'running';");
+
+        // PKG install queue
+        db.request("CREATE TABLE IF NOT EXISTS install_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, name TEXT, titleID TEXT, contentID TEXT, status TEXT DEFAULT 'pending', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
+        db.request("UPDATE install_queue SET status = 'pending' WHERE status = 'running';");
         db.close();
 
 

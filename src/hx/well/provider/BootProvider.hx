@@ -128,6 +128,7 @@ class BootProvider extends AbstractProvider {
 
         #if orbis
         airpsx.decrypt.SelfDecryptManager.resume();
+        airpsx.install.InstallQueueManager.resume();
         #end
 
         // api group
