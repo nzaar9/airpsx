@@ -35,6 +35,10 @@ class TaskEvents {
             lastTitleID = titleID;
         } else if (titleID != lastTitleID) {
             if (lastTitleID != "")
+                airpsx.utils.WebhookUtils.emit("game_close", {titleID: lastTitleID});
+            if (titleID != "")
+                airpsx.utils.WebhookUtils.emit("game_launch", {titleID: titleID});
+            if (lastTitleID != "")
                 fire(TaskTrigger.GAME_CLOSE, lastTitleID, ["titleID" => lastTitleID]);
             if (titleID != "")
                 fire(TaskTrigger.GAME_LAUNCH, titleID, ["titleID" => titleID]);

@@ -57,6 +57,9 @@ import hx.well.handler.filesystem.FileSystemArchiveHandler;
 import hx.well.handler.filesystem.FileSystemJobHandler;
 import hx.well.handler.filesystem.FileSystemTextHandler;
 import hx.well.handler.filesystem.FileSystemHexHandler;
+import hx.well.handler.ProcessKillHandler;
+import hx.well.handler.ApiDocsHandler;
+import hx.well.handler.application.ApplicationUninstallHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -208,6 +211,9 @@ class ApiRoute extends RouteGroup {
         Route.get("/process/list")
             .handler(new ProcessListHandler());
 
+        Route.post("/process/kill")
+            .handler(new ProcessKillHandler());
+
         Route.path("/media").group(() -> {
             Route.get("/list")
                 .handler(new MediaListHandler());
@@ -224,6 +230,10 @@ class ApiRoute extends RouteGroup {
         Route.path("/app").group(() -> {
             Route.get("/list")
                 .handler(new ApplicationListHandler());
+
+            Route.post("/uninstall/{titleId}")
+                .handler(new ApplicationUninstallHandler())
+                .where("titleId", "[A-Z]{4}[0-9]{5}");
 
             Route.get("/run/{titleId}")
                 .handler(new ApplicationRunHandler())
@@ -301,6 +311,9 @@ class ApiRoute extends RouteGroup {
 
         Route.post("/server/kill")
             .handler(new KillServerHandler());
+
+        Route.get("/docs")
+            .handler(new ApiDocsHandler());
 
         Route.get("/blank")
             .handler(new BlankHandler());

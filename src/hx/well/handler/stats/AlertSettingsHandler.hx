@@ -14,7 +14,9 @@ class AlertSettingsHandler extends AbstractHandler {
         return request().validate([
             "temperature" => [ValidatorRule.Int],
             "webhook" => [ValidatorRule.String],
-            "test" => [ValidatorRule.Bool]
+            "test" => [ValidatorRule.Bool],
+            "eventWebhook" => [ValidatorRule.String],
+            "events" => [ValidatorRule.String]
         ]);
     }
 
@@ -31,13 +33,26 @@ class AlertSettingsHandler extends AbstractHandler {
             SettingsUtils.set("alert.webhook", webhook);
         }
 
+        // Outbound event webhook (game_launch, game_close, backup_done, backup_failed); `events` is a comma separated allow-list.
+        var eventWebhook:String = request.input("eventWebhook");
+        if (eventWebhook != null) {
+            if (eventWebhook != "" && !(StringTools.startsWith(eventWebhook, "http://") || StringTools.startsWith(eventWebhook, "https://")))
+                return {error: "eventWebhook must be an http(s) URL"};
+            SettingsUtils.set("webhook.url", eventWebhook);
+        }
+        var events:String = request.input("events");
+        if (events != null)
+            SettingsUtils.set("webhook.events", events);
+
         var url = SettingsUtils.get("alert.webhook", "");
         if (request.input("test", false) == true)
             WebhookUtils.send(url, "AirPSX test alert");
 
         return {
             temperature: SettingsUtils.get("alert.temperature", ""),
-            webhook: url
+            webhook: url,
+            eventWebhook: SettingsUtils.get("webhook.url", ""),
+            events: SettingsUtils.get("webhook.events", "")
         };
     }
 }

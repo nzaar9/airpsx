@@ -94,10 +94,12 @@ class SaveBackupManager {
             DBStatic.query('UPDATE save_backups SET status = \'done\', size = ? WHERE id = ?', FileSystem.stat(finalPath).size, id);
             prune(dir, cfg.keep, profile);
             if (!silent) LibKernel.sendNotificationRequest('Save backup finished');
+            airpsx.utils.WebhookUtils.emit("backup_done", {path: finalPath});
         } catch (e) {
             if (id != -1)
                 DBStatic.query('UPDATE save_backups SET status = \'failed\', error = ? WHERE id = ?', Std.string(e), id);
             LibKernel.sendNotificationRequest('Save backup failed: ${e}');
+            airpsx.utils.WebhookUtils.emit("backup_failed", {error: Std.string(e)});
         }
     }
 
