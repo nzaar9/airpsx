@@ -10,13 +10,14 @@ import hx.well.validator.ValidatorRule;
 class StatsHistoryHandler extends AbstractHandler {
     public override function validate():Bool {
         return request().validate([
-            "titleID" => [ValidatorRule.String],
-            "limit" => [ValidatorRule.Int]
+            "titleID" => [ValidatorRule.String]
         ]);
     }
 
     public function execute(request:Request):AbstractResponse {
-        var limit:Int = request.input("limit", 500);
+        // Query-string values are text, so parse by hand (a ValidatorRule.Int rule would reject "5" with a 422).
+        var parsed = Std.parseInt(Std.string(request.input("limit", 500)));
+        var limit:Int = parsed == null ? 500 : parsed;
         if (limit < 1) limit = 1;
         if (limit > 1000) limit = 1000;
 

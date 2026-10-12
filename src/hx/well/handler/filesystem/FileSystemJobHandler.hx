@@ -8,7 +8,12 @@ import airpsx.fs.FileJobs;
 class FileSystemJobHandler extends AbstractHandler {
     public function execute(request:Request):AbstractResponse {
         var id = Std.parseInt(request.query("id"));
-        var job = id != null ? FileJobs.get(id) : null;
-        return job != null ? job : {error: "Job not found"};
+        // Typed explicitly: an untyped `var` is inferred as Response and the job would be cast to null.
+        var job:Dynamic = id != null ? FileJobs.get(id) : null;
+        if (job == null) {
+            var notFound:Dynamic = {error: "Job not found"};
+            return notFound;
+        }
+        return job;
     }
 }

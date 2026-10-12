@@ -12,7 +12,12 @@ class FileSystemUploadSessionStatusHandler extends AbstractHandler {
         if (id == null || id == "")
             return DBStatic.query('SELECT id, path, size, received, status, updatedAt FROM upload_sessions WHERE status = \'uploading\' ORDER BY createdAt DESC');
 
-        var session = UploadSessionManager.get(id);
-        return session != null ? session : {error: "Session not found"};
+        // Typed explicitly: an untyped `var` here is inferred as Response and the row would be cast to null.
+        var session:Dynamic = UploadSessionManager.get(id);
+        if (session == null) {
+            var notFound:Dynamic = {error: "Session not found"};
+            return notFound;
+        }
+        return session;
     }
 }

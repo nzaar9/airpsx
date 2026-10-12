@@ -48,8 +48,9 @@ class UploadSessionManager {
     }
 
     public static function get(id:String):Dynamic {
-        var rs = DBStatic.query('SELECT id, path, size, received, status, createdAt, updatedAt FROM upload_sessions WHERE id = ?', id);
-        return rs.hasNext() ? rs.next() : null;
+        // select() reads the whole result, so no half-consumed cursor is left open on this thread's connection
+        var rows = DBStatic.select('SELECT id, path, size, received, status, createdAt, updatedAt FROM upload_sessions WHERE id = ?', id);
+        return rows.length > 0 ? rows[0] : null;
     }
 
     /** Writes `length` bytes read from `input` at `offset`. Returns the session state, or {error, received} on a mismatch. */

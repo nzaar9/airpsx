@@ -20,7 +20,7 @@ class PackagePreviewHandler extends AbstractHandler {
         var path:String = request.input("path");
         if (path.indexOf("..") != -1 || !path.startsWith("/"))
             return {error: "Invalid path"};
-        var info = PkgMetadata.read(path);
+        var info:Dynamic = PkgMetadata.read(path);
         if (info == null)
             return {error: "Not a readable PKG (only local PS4-format packages can be previewed)"};
         return info;

@@ -24,3 +24,5 @@
 --macro airpsx.macro.HScriptVariableMacro.run()
 -dce std
 -D release
+# Patched copies of library classes. Must stay after the -lib lines: later classpaths win.
+-cp overrides
