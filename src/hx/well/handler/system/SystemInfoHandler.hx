@@ -8,6 +8,7 @@ import hx.well.handler.AbstractHandler;
 import hx.well.http.Request;
 import hx.well.http.AbstractResponse;
 import cpp.lib.LibKernelSys;
+import cpp.lib.LibClock;
 
 // This service returns non-variable system resources.
 class SystemInfoHandler extends AbstractHandler {
@@ -28,6 +29,8 @@ class SystemInfoHandler extends AbstractHandler {
             upd_version: Systemctl.kernelUpdVersion,
             kernel_version: Systemctl.kernelVersion,
             kernel_boot_time: Systemctl.kernelBootTime,
+            // Seconds since boot from the monotonic clock; kernel_boot_time is a wall-clock value that can disagree with the browser's clock.
+            uptime: Std.int(LibClock.monotonicSeconds()),
         };
     }
 }
