@@ -51,6 +51,12 @@ import hx.well.handler.save.SaveBackupRunHandler;
 import hx.well.handler.save.SaveBackupListHandler;
 import hx.well.handler.save.SaveBackupRestoreHandler;
 import hx.well.handler.save.SaveBackupDeleteHandler;
+import hx.well.handler.filesystem.FileSystemSearchHandler;
+import hx.well.handler.filesystem.FileSystemBatchHandler;
+import hx.well.handler.filesystem.FileSystemArchiveHandler;
+import hx.well.handler.filesystem.FileSystemJobHandler;
+import hx.well.handler.filesystem.FileSystemTextHandler;
+import hx.well.handler.filesystem.FileSystemHexHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -127,6 +133,24 @@ class ApiRoute extends RouteGroup {
                 .handler(new FileSystemUploadHandler())
                 .setStream(true)
                 .where("path", ".*");
+
+            Route.post("/search")
+                .handler(new FileSystemSearchHandler());
+
+            Route.post("/batch")
+                .handler(new FileSystemBatchHandler());
+
+            Route.post("/archive")
+                .handler(new FileSystemArchiveHandler());
+
+            Route.get("/job")
+                .handler(new FileSystemJobHandler());
+
+            Route.post("/text")
+                .handler(new FileSystemTextHandler());
+
+            Route.post("/hex")
+                .handler(new FileSystemHexHandler());
 
             Route.post("/upload-session/init")
                 .handler(new FileSystemUploadSessionInitHandler());
