@@ -34,6 +34,7 @@ class RemoteScriptListHandler extends AbstractHandler {
     public function execute(request:Request):AbstractResponse {
         var isLatestDatabase:Bool = false;
         var search:String = request.input("search");
+        var downloadError:String = null;
 
         // Download database if search is null
         if(search == null) {
@@ -41,12 +42,18 @@ class RemoteScriptListHandler extends AbstractHandler {
                 downloadDB();
                 isLatestDatabase = true;
             } catch (e:Exception) {
+                downloadError = e.message;
                 trace(e.message, CallStack.toString(e.stack));
             }
         }
 
         if(!FileSystem.exists(Const.SCRIPT_DB_PATH)) {
-            return {success: false, message: "Problem occurred while downloading database"};
+            // A non-2xx status makes the web UI show its "Failed to load scripts" message with a retry button.
+            // Answering 200 with an object instead crashes it (it expects an array and calls .map on it).
+            return ResponseBuilder.asJson({
+                success: false,
+                message: "Problem occurred while downloading database" + (downloadError != null ? ": " + downloadError : "")
+            }).status(503);
         }
 
         var parameters:Array<Dynamic> = [Systemctl.kernelSdkVersion, Systemctl.kernelSdkVersion];
