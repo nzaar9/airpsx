@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <title>AirPSX Automation</title>
+  <style>
+    :root { --bg:#f4f5f7; --card:#fff; --text:#1d2128; --muted:#667085; --line:#dde1e7; --accent:#3b6cf6; --ok:#1a8a4a; --bad:#c9352b; --input:#fff; }
+    :root.dark { --bg:#1a1a1a; --card:#262626; --text:#e8e8e8; --muted:#9aa0aa; --line:#3a3a3a; --accent:#5b8cff; --ok:#43c06f; --bad:#ff6b5e; --input:#1f1f1f; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:5; }
+    header h1 { font-size:18px; margin:0; flex:1; }
+    a { color:var(--accent); text-decoration:none; }
+    main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(440px, 1fr)); }
+    @media (max-width:520px) { main { grid-template-columns:1fr; padding:10px; } }
+    section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+    section.wide { grid-column:1 / -1; }
+    h2 { margin:0 0 4px; font-size:15px; }
+    p.hint { margin:0 0 12px; color:var(--muted); font-size:12.5px; }
+    label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+    input[type=text], input[type=number], select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:var(--input); color:var(--text); font:inherit; }
+    input[type=file] { max-width:100%; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .row > * { flex:1 1 auto; }
+    .row > button, .row > .fit { flex:0 0 auto; }
+    button { padding:7px 12px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    button.danger { color:var(--bad); }
+    button:disabled { opacity:.5; cursor:default; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+    th, td { text-align:left; padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:middle; overflow-wrap:anywhere; }
+    th { color:var(--muted); font-weight:600; font-size:12px; }
+    td.actions { white-space:nowrap; text-align:right; }
+    td input, td select { padding:4px 6px; }
+    .empty { color:var(--muted); padding:8px 0; font-size:13px; }
+    .tag { display:inline-block; padding:1px 7px; border-radius:99px; border:1px solid var(--line); font-size:12px; }
+    .tag.done, .tag.submitted { color:var(--ok); border-color:var(--ok); }
+    .tag.failed { color:var(--bad); border-color:var(--bad); }
+    .switch { display:flex; align-items:center; gap:8px; }
+    .bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin:8px 0 4px; }
+    .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+    #toast { position:fixed; right:16px; bottom:16px; max-width:min(420px, calc(100vw - 32px)); padding:10px 14px; border-radius:8px; background:#222; color:#fff; opacity:0; transform:translateY(8px); transition:all .2s; pointer-events:none; z-index:20; }
+    #toast.show { opacity:1; transform:none; }
+    #toast.bad { background:var(--bad); }
+    .note { font-size:12px; color:var(--muted); margin-top:6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AirPSX Automation</h1>
+    <a href="/">← Desktop</a>
+    <button id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <main>
+    <section id="maint">
+      <h2>Maintenance mode</h2>
+      <p class="hint">While on, AirPSX starts nothing by itself: tasks, scheduled backups, queued installs and decrypt jobs wait. Manual actions still work.</p>
+      <label class="switch"><input type="checkbox" id="maintToggle" /> <span id="maintLabel">Loading…</span></label>
+    </section>
+
+    <section id="alerts">
+      <h2>Alerts &amp; webhooks</h2>
+      <p class="hint">Overheat alerts post a message (Discord/Slack compatible). Event webhooks post JSON for Home Assistant, n8n and similar.</p>
+      <div class="row">
+        <div><label for="alertTemp">Alert above (°C)</label><input type="number" id="alertTemp" min="30" max="120" placeholder="e.g. 85" /></div>
+        <div><label for="alertEvents">Event filter (comma separated, empty = all)</label><input type="text" id="alertEvents" placeholder="game_launch,game_close,backup_done,backup_failed" /></div>
+      </div>
+      <label for="alertHook">Alert webhook URL</label>
+      <input type="text" id="alertHook" placeholder="https://discord.com/api/webhooks/…" />
+      <label for="eventHook">Event webhook URL</label>
+      <input type="text" id="eventHook" placeholder="http://homeassistant.local:8123/api/webhook/airpsx" />
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="alertSave">Save</button>
+        <button id="alertTest">Send test alert</button>
+      </div>
+    </section>
+
+    <section id="tasks" class="wide">
+      <h2>Task triggers</h2>
+      <p class="hint">Choose when each task runs. Time-based tasks use their interval from the Scheduler app; event tasks run when the event happens.</p>
+      <div id="tasksBody"></div>
+    </section>
+
+    <section id="backups" class="wide">
+      <h2>Save backups</h2>
+      <p class="hint">Scheduled tar backups of save data to any mounted folder (USB drive, network share). Console only.</p>
+      <div class="row">
+        <label class="switch fit"><input type="checkbox" id="bkEnabled" /> Enabled</label>
+        <div><label for="bkInterval">Every (hours)</label><input type="number" id="bkInterval" min="1" /></div>
+        <div><label for="bkKeep">Keep newest</label><input type="number" id="bkKeep" min="1" /></div>
+        <div><label for="bkProfile">Profile ID (empty = all)</label><input type="text" id="bkProfile" maxlength="8" placeholder="8 hex digits" /></div>
+      </div>
+      <label for="bkDest">Destination folder</label>
+      <input type="text" id="bkDest" placeholder="/mnt/usb0/airpsx" />
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="bkSave">Save</button>
+        <button id="bkRun">Back up now</button>
+        <button id="bkRefresh">Refresh list</button>
+      </div>
+      <div id="bkList"></div>
+    </section>
+
+    <section id="queue" class="wide">
+      <h2>Install queue</h2>
+      <p class="hint">Queue several packages and install them one after another. Add a URL, a .pkg file path, or a folder of .pkg files (USB drive, mounted share).</p>
+      <div class="row">
+        <input type="text" id="qSource" placeholder="/mnt/usb0/packages  or  http://…/game.pkg" />
+        <button class="primary" id="qAdd">Add to queue</button>
+      </div>
+      <div class="note">“submitted” means the console accepted the package; installation progress is shown by the console itself.</div>
+      <div id="qList"></div>
+    </section>
+
+    <section id="upload" class="wide">
+      <h2>Resumable upload</h2>
+      <p class="hint">Uploads in 4 MB chunks. A dropped connection or a page reload does not lose progress: pick the same file and destination again to continue. Files must be smaller than 2 GB.</p>
+      <div class="row">
+        <input type="file" id="upFile" />
+      </div>
+      <label for="upPath">Destination path on the console</label>
+      <input type="text" id="upPath" placeholder="/data/homebrew/file.pkg" />
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="upStart">Start / resume</button>
+        <button id="upPause" disabled>Pause</button>
+        <button class="danger" id="upCancel" disabled>Cancel &amp; discard</button>
+        <label class="switch fit" style="margin:0"><input type="checkbox" id="upOverwrite" /> Overwrite if exists</label>
+      </div>
+      <div class="bar"><div id="upBar"></div></div>
+      <div class="note" id="upStatus">Idle.</div>
+      <h2 style="margin-top:14px">Unfinished uploads</h2>
+      <div id="upList"></div>
+    </section>
+
+    <section id="playtime">
+      <h2>Playtime</h2>
+      <p class="hint">Approximate: the console samples the running title once a minute.</p>
+      <div id="ptBody"></div>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+
+  // ---- theme (shares the desktop's saved choice) ----
+  const root = document.documentElement;
+  const applyTheme = (dark) => root.classList.toggle('dark', dark);
+  let dark = true;
+  try { const t = localStorage.getItem('theme'); dark = t ? t === 'dark' : true; } catch (e) {}
+  applyTheme(dark);
+  $('themeBtn').onclick = () => { dark = !dark; applyTheme(dark); try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) {} };
+
+  // ---- helpers ----
+  let toastTimer;
+  function toast(msg, bad) {
+    const t = $('toast'); t.textContent = msg; t.className = 'show' + (bad ? ' bad' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = ''; }, 4200);
+  }
+  async function api(path, body, method) {
+    const opt = { method: method || (body === undefined ? 'GET' : 'POST') };
+    if (body !== undefined) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(body); }
+    const r = await fetch(path, opt);
+    let data = null;
+    try { data = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error((data && (data.message || data.error)) || ('HTTP ' + r.status));
+    if (data === null) throw new Error('Not available (console-only feature, or an unexpected response)');
+    if (data && !Array.isArray(data) && (data.error || data.success === false)) throw new Error(data.error || data.message || 'Request failed');
+    return data;
+  }
+  const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message || String(e), true); } };
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid != null) n.append(kid);
+    return n;
+  }
+  function table(headers, rows) {
+    const t = el('table'); const hr = el('tr');
+    headers.forEach((h) => hr.append(el('th', { text: h }))); t.append(el('thead', {}, hr));
+    const tb = el('tbody'); rows.forEach((r) => tb.append(r)); t.append(tb); return t;
+  }
+  const empty = (msg) => el('div', { class: 'empty', text: msg });
+  const fmtBytes = (n) => { n = Number(n) || 0; const u = ['B','KB','MB','GB','TB']; let i = 0; while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; } return n.toFixed(i ? 1 : 0) + ' ' + u[i]; };
+  const fmtDur = (s) => { s = Math.round(Number(s) || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + 'h ' + m + 'm' : m + 'm ' + (s % 60) + 's'; };
+  const tag = (s) => el('span', { class: 'tag ' + s, text: s });
+
+  // ---- maintenance ----
+  async function loadMaint() {
+    const d = await api('/api/system/maintenance', {});
+    $('maintToggle').checked = !!d.enabled; $('maintLabel').textContent = d.enabled ? 'On — automatic work is paused' : 'Off';
+  }
+  $('maintToggle').onchange = guard(async () => {
+    const d = await api('/api/system/maintenance', { enabled: $('maintToggle').checked });
+    $('maintLabel').textContent = d.enabled ? 'On — automatic work is paused' : 'Off'; toast('Maintenance mode ' + (d.enabled ? 'on' : 'off'));
+  });
+
+  // ---- alerts ----
+  async function loadAlerts() {
+    const d = await api('/api/stats/alert', {});
+    $('alertTemp').value = d.temperature || ''; $('alertHook').value = d.webhook || '';
+    $('eventHook').value = d.eventWebhook || ''; $('alertEvents').value = d.events || '';
+  }
+  $('alertSave').onclick = guard(async () => {
+    const body = { webhook: $('alertHook').value.trim(), eventWebhook: $('eventHook').value.trim(), events: $('alertEvents').value.trim() };
+    const t = $('alertTemp').value.trim(); if (t !== '') body.temperature = parseInt(t, 10);
+    await api('/api/stats/alert', body); toast('Saved');
+  });
+  $('alertTest').onclick = guard(async () => { await api('/api/stats/alert', { test: true }); toast('Test alert sent (if a webhook is set)'); });
+
+  // ---- task triggers ----
+  const TRIGGERS = [['cron', 'On a timer'], ['boot', 'At boot'], ['game_launch', 'When a game launches'], ['game_close', 'When a game closes'], ['temp_above', 'CPU temperature above']];
+  async function loadTasks() {
+    const list = await api('/api/task/list'); const body = $('tasksBody'); body.replaceChildren();
+    if (!list.length) { body.append(empty('No tasks yet. Create one in the Scheduler app.')); return; }
+    const rows = list.map((t) => {
+      const sel = el('select'); TRIGGERS.forEach(([v, l]) => { const o = el('option', { value: v, text: l }); if ((t.triggerType || 'cron') === v) o.selected = true; sel.append(o); });
+      const val = el('input', { type: 'text', value: t.triggerValue || '' });
+      const sync = () => { const k = sel.value; val.disabled = k === 'cron' || k === 'boot'; val.placeholder = k === 'temp_above' ? '°C, e.g. 90' : (k.startsWith('game') ? 'title ID (optional)' : ''); };
+      sel.onchange = sync; sync();
+      const save = el('button', { text: 'Save', onclick: guard(async () => {
+        await api('/api/task/update', { id: t.id, triggerType: sel.value, triggerValue: val.disabled ? '' : val.value.trim() }); toast('Saved “' + t.name + '”');
+      }) });
+      return el('tr', {}, el('td', { text: t.name }), el('td', {}, sel), el('td', {}, val), el('td', { class: 'actions' }, save));
+    });
+    body.append(table(['Task', 'Runs', 'Value', ''], rows));
+  }
+
+  // ---- save backups ----
+  async function loadBackupConfig() {
+    const c = await api('/api/save/backups/config', {});
+    $('bkEnabled').checked = !!c.enabled; $('bkInterval').value = c.intervalHours; $('bkKeep').value = c.keep; $('bkDest').value = c.destination || ''; $('bkProfile').value = c.profileId || '';
+  }
+  async function loadBackups() {
+    const list = await api('/api/save/backups/list'); const box = $('bkList'); box.replaceChildren();
+    if (!list.length) { box.append(empty('No backups yet.')); return; }
+    box.append(table(['When', 'Size', 'Status', 'File', ''], list.map((b) => el('tr', {},
+      el('td', { text: b.createdAt }), el('td', { text: fmtBytes(b.size) }), el('td', {}, tag(b.status), b.error ? el('div', { class: 'note', text: b.error }) : null), el('td', { text: b.path }),
+      el('td', { class: 'actions' },
+        b.status === 'done' ? el('button', { text: 'Restore', onclick: guard(async () => {
+          if (!confirm('Restore this backup? Current save data of the covered profiles will be overwritten.')) return;
+          const r = await api('/api/save/backups/restore', { id: b.id }); toast('Restored ' + r.restored + ' files');
+        }) }) : null, ' ',
+        el('button', { class: 'danger', text: 'Delete', onclick: guard(async () => { if (!confirm('Delete this backup file?')) return; await api('/api/save/backups/delete', { id: b.id }); await loadBackups(); }) }))))));
+  }
+  $('bkSave').onclick = guard(async () => {
+    await api('/api/save/backups/config', { enabled: $('bkEnabled').checked, intervalHours: parseInt($('bkInterval').value, 10), keep: parseInt($('bkKeep').value, 10), destination: $('bkDest').value.trim(), profileId: $('bkProfile').value.trim() });
+    toast('Saved');
+  });
+  $('bkRun').onclick = guard(async () => { await api('/api/save/backups/run', {}); toast('Backup started'); setTimeout(guard(loadBackups), 1500); });
+  $('bkRefresh').onclick = guard(loadBackups);
+
+  // ---- install queue ----
+  async function loadQueue() {
+    const list = await api('/api/package/queue/list'); const box = $('qList'); box.replaceChildren();
+    if (!list.length) { box.append(empty('The queue is empty.')); return; }
+    box.append(table(['Package', 'Title ID', 'Status', ''], list.map((q) => el('tr', {},
+      el('td', { text: q.name || q.source }, el('div', { class: 'note', text: q.source })), el('td', { text: q.titleID || '' }),
+      el('td', {}, tag(q.status), q.error ? el('div', { class: 'note', text: q.error }) : null),
+      el('td', { class: 'actions' },
+        q.status === 'pending' ? el('button', { text: 'Cancel', onclick: guard(async () => { await api('/api/package/queue/cancel', { id: q.id }); await loadQueue(); }) }) : null,
+        (q.status === 'failed' || q.status === 'cancelled') ? el('button', { text: 'Retry', onclick: guard(async () => { await api('/api/package/queue/cancel', { id: q.id, retry: true }); await loadQueue(); }) }) : null)))));
+  }
+  $('qAdd').onclick = guard(async () => {
+    const s = $('qSource').value.trim(); if (!s) throw new Error('Enter a URL, file or folder');
+    const r = await api('/api/package/queue/add', { source: s }); $('qSource').value = ''; toast('Queued ' + r.queued + ' package(s)'); await loadQueue();
+  });
+
+  // ---- resumable upload ----
+  const CHUNK = 4 * 1024 * 1024;
+  let session = null, paused = false, running = false, abortCtl = null, startedAt = 0, startOffset = 0;
+  const setUp = (state) => { $('upStart').disabled = state.running; $('upPause').disabled = !state.running; $('upCancel').disabled = !state.session; };
+  async function chunkRequest(id, offset, blob) {
+    abortCtl = new AbortController();
+    const r = await fetch('/api/fs/upload-session/chunk?id=' + encodeURIComponent(id) + '&offset=' + offset, { method: 'POST', body: blob, signal: abortCtl.signal });
+    let d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d) throw new Error('HTTP ' + r.status);
+    return d;
+  }
+  async function runUpload() {
+    const file = $('upFile').files[0]; const path = $('upPath').value.trim();
+    if (!file) throw new Error('Choose a file'); if (!path.startsWith('/')) throw new Error('Enter an absolute destination path');
+    if (running) return;
+    session = await api('/api/fs/upload-session/init', { path, size: file.size, overwrite: $('upOverwrite').checked });
+    running = true; paused = false; startedAt = Date.now(); startOffset = session.received; setUp({ running: true, session });
+    let retries = 0;
+    try {
+      while (session.status === 'uploading' && session.received < file.size && !paused) {
+        const off = session.received, end = Math.min(off + CHUNK, file.size);
+        try {
+          const d = await chunkRequest(session.id, off, file.slice(off, end));
+          if (d.error) { if (typeof d.received === 'number' && d.error === 'Offset mismatch') { session.received = d.received; continue; } throw new Error(d.error); }
+          session = d; retries = 0;
+        } catch (e) {
+          if (paused) break;
+          if (++retries > 5) throw e;
+          $('upStatus').textContent = 'Connection problem, retrying (' + retries + '/5)…';
+          const st = await fetch('/api/fs/upload-session/status?id=' + encodeURIComponent(session.id)).then((r) => r.json()).catch(() => null);
+          if (st && typeof st.received === 'number') session.received = st.received;
+          await new Promise((r) => setTimeout(r, 1000 * retries));
+          continue;
+        }
+        const pct = file.size ? session.received / file.size * 100 : 100; $('upBar').style.width = pct.toFixed(1) + '%';
+        const secs = (Date.now() - startedAt) / 1000, rate = secs > 0 ? (session.received - startOffset) / secs : 0;
+        $('upStatus').textContent = pct.toFixed(1) + '% — ' + fmtBytes(session.received) + ' of ' + fmtBytes(file.size) + (rate ? ' — ' + fmtBytes(rate) + '/s' : '');
+      }
+      if (session.status === 'done') { $('upStatus').textContent = 'Done: ' + path; toast('Upload finished'); session = null; }
+      else if (paused) $('upStatus').textContent = 'Paused at ' + fmtBytes(session.received) + '. Press Start / resume to continue.';
+    } finally { running = false; setUp({ running: false, session }); loadUploads().catch(() => {}); }
+  }
+  $('upStart').onclick = guard(runUpload);
+  $('upPause').onclick = () => { paused = true; if (abortCtl) abortCtl.abort(); };
+  $('upCancel').onclick = guard(async () => {
+    if (!session) return; paused = true; if (abortCtl) abortCtl.abort();
+    if (!confirm('Discard the partial upload?')) return;
+    await api('/api/fs/upload-session/cancel', { id: session.id }); session = null; $('upBar').style.width = '0'; $('upStatus').textContent = 'Cancelled.'; setUp({ running: false, session: null }); await loadUploads();
+  });
+  async function loadUploads() {
+    const list = await api('/api/fs/upload-session/status'); const box = $('upList'); box.replaceChildren();
+    if (!list.length) { box.append(empty('Nothing unfinished.')); return; }
+    box.append(table(['Destination', 'Progress', ''], list.map((u) => el('tr', {},
+      el('td', { text: u.path }), el('td', { text: fmtBytes(u.received) + ' / ' + fmtBytes(u.size) }),
+      el('td', { class: 'actions' }, el('button', { class: 'danger', text: 'Discard', onclick: guard(async () => { await api('/api/fs/upload-session/cancel', { id: u.id }); await loadUploads(); }) }))))));
+  }
+
+  // ---- playtime ----
+  async function loadPlaytime() {
+    const list = await api('/api/stats/playtime'); const box = $('ptBody'); box.replaceChildren();
+    if (!list.length) { box.append(empty('No playtime recorded yet.')); return; }
+    box.append(table(['Title', 'Played', 'Last played'], list.map((p) => el('tr', {}, el('td', { text: p.titleID }), el('td', { text: fmtDur(p.seconds) }), el('td', { text: p.lastPlayed || '' })))));
+  }
+
+  // ---- startup: each section loads independently, console-only ones may be unavailable ----
+  const sections = [['maint', loadMaint], ['alerts', loadAlerts], ['tasks', loadTasks], ['backups', async () => { await loadBackupConfig(); await loadBackups(); }], ['queue', loadQueue], ['upload', loadUploads], ['playtime', loadPlaytime]];
+  sections.forEach(([id, fn]) => fn().catch((e) => {
+    const s = $(id); if (!s) return;
+    s.append(el('div', { class: 'note', text: 'Not available: ' + (e.message || e) }));
+  }));
+  setInterval(() => { if (!document.hidden) { loadQueue().catch(() => {}); } }, 5000);
+})();
+</script>
+</body>
+</html>

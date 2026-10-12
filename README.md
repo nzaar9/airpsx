@@ -61,7 +61,7 @@ Your donations help me cover these costs and continue developing projects like *
 
 The desktop remembers your open windows, their position and size across page refreshes.
 
-**Automation and backend features** (HTTP API; some have no screen in the web UI yet)
+**Automation and backend features** (HTTP API, with the [Automation page](#automation-page) as a front end)
 
 - **Task triggers**: run tasks on a timer, at boot, when a game launches or closes, or when the CPU temperature passes a limit.
 - **Stats and alerts**: temperature, CPU frequency and running title are logged every minute; per-title playtime; webhook alert when the console runs hot.
@@ -98,6 +98,14 @@ AirPSX shows a notification with its address when it starts. Open that address (
 Double-click a desktop icon to open an app. Windows can be dragged, resized and minimized, and they reopen where you left them after a refresh. Right-click the desktop for the context menu; the sun/moon button in the taskbar switches between dark and light themes.
 
 ![Process List](docs/screenshots/process-list.png)
+
+### Automation page
+
+Open `http://<console-ip>:1214/tools.html` (or the ⚙️ **Automation** icon on the desktop) for the features that have no app of their own yet: maintenance mode, alert and event webhooks, task triggers, scheduled save backups, the install queue, resumable uploads and playtime.
+
+![Automation page](docs/screenshots/automation.png)
+
+*Sample data for the save backups section; the console-only sections show "Not available" on a development (Linux) build.*
 
 ---
 
@@ -239,7 +247,7 @@ Settings are stored in the `settings` table and changed through the API (see `/a
 - **Uploads and archives**: resumable uploads are limited to files below 2 GB; zip/unzip work in memory (64 MB per file, 256 MB total).
 - **Install queue** reports `submitted` when the console accepts a package; it cannot follow the installation itself.
 - PKG preview reads PS4-format packages only.
-- Several features (task triggers beyond cron, backups, queues, search, text/hex view) have API endpoints but no screen in the web UI yet.
+- Search, the text editor, the hex viewer, batch file operations and zip/unzip have API endpoints but no screen yet. Everything else new is on the Automation page.
 - Firmware compatibility is not tracked in this repository. Check the release notes and the loader you use.
 
 ---
