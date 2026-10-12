@@ -42,6 +42,10 @@ import hx.well.handler.pkg.InstallQueueAddHandler;
 import hx.well.handler.pkg.InstallQueueListHandler;
 import hx.well.handler.pkg.InstallQueueCancelHandler;
 import hx.well.handler.pkg.PackagePreviewHandler;
+import hx.well.handler.filesystem.FileSystemUploadSessionInitHandler;
+import hx.well.handler.filesystem.FileSystemUploadSessionChunkHandler;
+import hx.well.handler.filesystem.FileSystemUploadSessionStatusHandler;
+import hx.well.handler.filesystem.FileSystemUploadSessionCancelHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -118,6 +122,19 @@ class ApiRoute extends RouteGroup {
                 .handler(new FileSystemUploadHandler())
                 .setStream(true)
                 .where("path", ".*");
+
+            Route.post("/upload-session/init")
+                .handler(new FileSystemUploadSessionInitHandler());
+
+            Route.post("/upload-session/chunk")
+                .handler(new FileSystemUploadSessionChunkHandler())
+                .setStream(true);
+
+            Route.get("/upload-session/status")
+                .handler(new FileSystemUploadSessionStatusHandler());
+
+            Route.post("/upload-session/cancel")
+                .handler(new FileSystemUploadSessionCancelHandler());
 
             Route.post("/temp/file")
                 .handler(new FileSystemTempFileHandler())

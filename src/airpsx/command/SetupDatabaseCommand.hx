@@ -41,6 +41,9 @@ class SetupDatabaseCommand extends AbstractCommand<Bool> {
         db.request("CREATE TABLE IF NOT EXISTS decrypt_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, output TEXT, status TEXT DEFAULT 'pending', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
         db.request("UPDATE decrypt_jobs SET status = 'pending' WHERE status = 'running';");
 
+        // Resumable upload sessions
+        db.request("CREATE TABLE IF NOT EXISTS upload_sessions (id TEXT PRIMARY KEY, path TEXT, size INTEGER, received INTEGER DEFAULT 0, status TEXT DEFAULT 'uploading', createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
+
         // PKG install queue
         db.request("CREATE TABLE IF NOT EXISTS install_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, name TEXT, titleID TEXT, contentID TEXT, status TEXT DEFAULT 'pending', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
         db.request("UPDATE install_queue SET status = 'pending' WHERE status = 'running';");
