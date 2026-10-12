@@ -48,7 +48,8 @@ haxelib git crypto https://github.com/HaxeFoundation/crypto
 haxelib git haxe-crypto https://github.com/barisyild/haxe-crypto
 haxelib git hxvm-lua https://github.com/kevinresol/hxvm-lua
 haxelib git linc_lua https://github.com/kevinresol/linc_lua
-haxelib install haxe-concurrent 5.1.4
+haxelib install haxe-concurrent 5.1.5
+# hscript 2.7.0 breaks rulescript 0.2.0 (RuleScriptInterp), stay on 2.6.0 until rulescript supports it
 haxelib install hscript 2.6.0
 haxelib install rulescript 0.2.0
 haxelib install uuid

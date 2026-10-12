@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  HAXE_VERSION: 4.3.6
-  SDK_VERSION: 0.0.1.560-66f503f
+  HAXE_VERSION: 4.3.7
+  SDK_VERSION: v0.5.4
   SDK_PATH: /opt/OpenOrbis/PS4Toolchain
 
 jobs:
@@ -41,7 +41,8 @@ jobs:
           haxelib git haxe-crypto https://github.com/barisyild/haxe-crypto
           haxelib git hxvm-lua https://github.com/kevinresol/hxvm-lua
           haxelib git linc_lua https://github.com/kevinresol/linc_lua
-          haxelib install haxe-concurrent 5.1.4
+          haxelib install haxe-concurrent 5.1.5
+          # hscript 2.7.0 is not yet supported by rulescript (RuleScriptInterp fails to compile), keep 2.6.0
           haxelib install hscript 2.6.0
           haxelib install rulescript 0.2.0
           haxelib install uuid
@@ -69,7 +70,7 @@ jobs:
       - name: Setup OpenOrbis PS4 Toolchain
         run: |
           echo "Downloading Toolchain..."
-          wget https://github.com/illusion0001/OpenOrbis-PS4-Toolchain/releases/download/${{ env.SDK_VERSION }}/toolchain.tar.gz -O toolchain.tar.gz
+          wget https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/${{ env.SDK_VERSION }}/toolchain-llvm-18.tar.gz -O toolchain.tar.gz
           
           export OO_PS4_TOOLCHAIN=${{ env.SDK_PATH }}
           

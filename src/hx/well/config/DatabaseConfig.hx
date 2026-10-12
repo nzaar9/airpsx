@@ -25,13 +25,3 @@ class DatabaseConfig implements IConfig {
         },
     ];
 }
-
-
-typedef ConnectionTypedef = {
-    driver:String,
-    ?path:String,
-    ?host:String,
-    ?port:Int,
-    ?username:String,
-    ?password:String
-}
