@@ -16,7 +16,8 @@ using StringTools;
  * save_backups. Old archives beyond `backup.keep` are pruned, so every kept file is a restorable version.
  */
 class SaveBackupManager {
-    static var runLock:Mutex = new Mutex();
+    static var stateLock:Mutex = new Mutex();
+    static var running:Bool = false;
 
     public static function config():Dynamic {
         return {
@@ -52,11 +53,18 @@ class SaveBackupManager {
 
     /** Starts a backup on a worker thread. Returns false if one is already running. */
     public static function runNow(?silent:Bool = false):Bool {
-        if (!runLock.tryAcquire())
+        stateLock.acquire();
+        var alreadyRunning = running;
+        running = true;
+        stateLock.release();
+        if (alreadyRunning)
             return false;
+
         Thread.create(() -> {
             try { backup(silent); } catch (e) { trace('backup failed: ${e}'); }
-            runLock.release();
+            stateLock.acquire();
+            running = false;
+            stateLock.release();
         });
         return true;
     }
