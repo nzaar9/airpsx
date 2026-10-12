@@ -32,8 +32,11 @@ class UploadSessionManager {
         var rs = DBStatic.query('SELECT id FROM upload_sessions WHERE path = ? AND size = ? AND status = \'uploading\' ORDER BY createdAt DESC LIMIT 1', path, size);
         if (rs.hasNext()) {
             var existing = get(rs.next().id);
-            if (existing != null && FileSystem.exists(path + ".part"))
+            if (existing != null && FileSystem.exists(path + ".part")) {
+                if (existing.received == size) // a previous finish failed part-way: retry it
+                    return finish(existing);
                 return existing;
+            }
         }
 
         var id = Uuid.v4();
@@ -51,29 +54,38 @@ class UploadSessionManager {
 
     /** Writes `length` bytes read from `input` at `offset`. Returns the session state, or {error, received} on a mismatch. */
     public static function writeChunk(id:String, offset:Int, length:Int, input:Input):Dynamic {
-        var session = get(id);
-        if (session == null)
-            return {error: "Session not found"};
-        if (session.status != "uploading")
-            return {error: "Session is " + session.status, received: session.received};
-
-        var received:Int = session.received;
-        var size:Int = session.size;
-        if (offset != received)
-            return {error: "Offset mismatch", received: received};
-        if (length <= 0 || offset + length > size)
-            return {error: "Invalid chunk length", received: received};
-
+        // Take the per-session slot first so the offset check below sees every previously completed chunk.
         lock.acquire();
         var alreadyBusy = busy.exists(id);
         if (!alreadyBusy) busy.set(id, true);
         lock.release();
         if (alreadyBusy)
-            return {error: "Another chunk is in progress", received: received};
+            return {error: "Another chunk is in progress"};
 
+        var session = get(id);
+        if (session == null) {
+            release(id);
+            return {error: "Session not found"};
+        }
+        var received:Int = session.received;
+        var size:Int = session.size;
+        if (session.status != "uploading") {
+            release(id);
+            return {error: "Session is " + session.status, received: received};
+        }
+        if (offset != received) {
+            release(id);
+            return {error: "Offset mismatch", received: received};
+        }
+        if (length <= 0 || offset + length > size) {
+            release(id);
+            return {error: "Invalid chunk length", received: received};
+        }
+
+        var out:sys.io.FileOutput = null;
         try {
             var part:String = session.path + ".part";
-            var out = File.update(part, true);
+            out = File.update(part, true);
             out.seek(offset, SeekBegin);
             var buffer = Bytes.alloc(16384);
             var left = length;
@@ -85,6 +97,7 @@ class UploadSessionManager {
                 left -= n;
             }
             out.close();
+            out = null;
 
             release(id);
             if (left > 0) // connection dropped mid-chunk: progress is not advanced, the client resends from `received`
@@ -94,6 +107,7 @@ class UploadSessionManager {
             session = get(id);
             return offset + length == size ? finish(session) : session;
         } catch (e) {
+            if (out != null) try { out.close(); } catch (_) {}
             release(id);
             return {error: Std.string(e), received: received};
         }
@@ -110,9 +124,9 @@ class UploadSessionManager {
 
     static function finish(session:Dynamic):Dynamic {
         var path:String = session.path;
-        if (FileSystem.exists(path))
-            FileSystem.deleteFile(path); // overwrite was approved at init
-        FileSystem.rename(path + ".part", path);
+        if (FileSystem.stat(path + ".part").size != (session.size : Int)) // never promote a truncated or edited .part
+            return {error: "Partial file size does not match the session", received: session.received};
+        FileSystem.rename(path + ".part", path); // overwrite was approved at init; rename(2) replaces atomically
         DBStatic.query('UPDATE upload_sessions SET status = \'done\', updatedAt = datetime(\'now\',\'localtime\') WHERE id = ?', session.id);
         return get(session.id);
     }

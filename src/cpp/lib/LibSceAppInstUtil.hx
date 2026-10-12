@@ -17,7 +17,7 @@ class LibSceAppInstUtil {
     }
 
     @:hscriptVariable("appInstUtilInstallByPackage")
-    public static function appInstUtilInstallByPackage(uri:String, contentName:String = "PKG", iconUrl:String = "") {
+    public static function appInstUtilInstallByPackage(uri:String, contentName:String = "PKG", iconUrl:String = ""):Int {
         #if prospero
         var arg3:PlayGoInfo = PlayGoInfo.create();
 
@@ -31,7 +31,7 @@ class LibSceAppInstUtil {
         inx.content_name = contentName;
         inx.icon_url = iconUrl;
 
-        ExternLibSceAppInstUtil.sceAppInstUtilInstallByPackage(inx, pkg_info, arg3);
+        return ExternLibSceAppInstUtil.sceAppInstUtilInstallByPackage(inx, pkg_info, arg3);
         #else
         var downloadParams:BgftDownloadParamEx = BgftDownloadParamEx.create();
         downloadParams.param = BgftDownloadParam.create();
@@ -64,6 +64,7 @@ class LibSceAppInstUtil {
                 trace("sceBgftServiceIntDownloadStartTask failed: " + ret);
             }
         }
+        return ret;
         #end
     }
 

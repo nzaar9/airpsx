@@ -119,15 +119,16 @@ class SaveBackupUtils {
         var out = File.write(temp, true);
         var buffer = Bytes.alloc(16384);
         var left = size;
-        while (left > 0) {
-            var n = input.readBytes(buffer, 0, Std.int(Math.min(buffer.length, left)));
-            if (n <= 0) {
-                out.close();
-                FileSystem.deleteFile(temp);
-                throw "Unexpected end of archive";
+        try {
+            while (left > 0) {
+                var n = input.readBytes(buffer, 0, Std.int(Math.min(buffer.length, left)));
+                out.writeBytes(buffer, 0, n);
+                left -= n;
             }
-            out.writeBytes(buffer, 0, n);
-            left -= n;
+        } catch (e) { // readBytes throws Eof on a truncated archive
+            out.close();
+            try { FileSystem.deleteFile(temp); } catch (_) {}
+            throw "Unexpected end of archive";
         }
         out.close();
         if (FileSystem.exists(target)) FileSystem.deleteFile(target);
@@ -135,7 +136,11 @@ class SaveBackupUtils {
     }
 
     static function skip(input:FileInput, count:Int):Void {
-        if (count > 0) input.readFullBytes(Bytes.alloc(count), 0, count);
+        var buffer = Bytes.alloc(16384);
+        while (count > 0) {
+            var n = input.readBytes(buffer, 0, Std.int(Math.min(buffer.length, count)));
+            count -= n;
+        }
     }
 
     static function isZero(bytes:Bytes):Bool {

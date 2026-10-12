@@ -23,8 +23,10 @@ class TaskEvents {
             if (filter != null && value != null && value != "" && value != filter)
                 continue;
             // Run off the scheduler thread so a long script cannot stall stats logging.
+            // Each task gets its own copy: script backends mutate `extra` and tasks run on separate threads.
+            var copy:Map<String, Any> = extra == null ? null : [for (k => v in extra) k => v];
             Thread.create(() -> {
-                try { TaskRunner.run(row, extra); } catch (e) { trace('event task failed: ${e}'); }
+                try { TaskRunner.run(row, copy); } catch (e) { trace('event task failed: ${e}'); }
             });
         }
     }
@@ -56,6 +58,10 @@ class TaskEvents {
         var rows:Array<Dynamic> = [];
         while (rs.hasNext())
             rows.push(rs.next());
+        var live:Map<Int, Bool> = new Map();
+        for (row in rows) live.set(row.id, true);
+        for (id in [for (k in tempActive.keys()) k]) // forget deleted/disabled tasks so a re-enabled one can fire again
+            if (!live.exists(id)) tempActive.remove(id);
         for (row in rows) {
             var id:Int = row.id;
             var threshold = Std.parseInt(Std.string(row.triggerValue));

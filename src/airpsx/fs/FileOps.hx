@@ -15,13 +15,24 @@ class FileOps {
     public static function normalize(path:String):Null<String> {
         if (path == null || !path.startsWith("/") || path.indexOf("..") != -1 || path.indexOf("\x00") != -1)
             return null;
-        while (path.length > 1 && path.endsWith("/"))
-            path = path.substr(0, path.length - 1);
-        return path;
+        // Canonical form: no empty or "." segments, so "//user/./home" cannot dodge the protected-path check.
+        var parts = path.split("/").filter(s -> s != "" && s != ".");
+        return "/" + parts.join("/");
     }
 
     public static function isProtected(path:String):Bool {
         return protectedPaths.contains(path);
+    }
+
+    static inline var MAX_DEPTH:Int = 64;
+
+    /** True when `child` of `parent` is a symlink (its resolved path leaves the parent's resolved path). */
+    static function isLink(parent:String, child:String):Bool {
+        try {
+            return FileSystem.fullPath(child) != FileSystem.fullPath(parent) + (parent == "/" ? "" : "/") + haxe.io.Path.withoutDirectory(child);
+        } catch (e) {
+            return true;
+        }
     }
 
     // ---- search ----
@@ -34,8 +45,8 @@ class FileOps {
         var deadline = Sys.time() + 10;
         var truncated = false;
 
-        function walk(dir:String):Void {
-            if (truncated) return;
+        function walk(dir:String, depth:Int):Void {
+            if (truncated || depth > MAX_DEPTH) return;
             var entries:Array<String>;
             try { entries = FileSystem.readDirectory(dir); } catch (e) { return; }
             for (entry in entries) {
@@ -48,23 +59,28 @@ class FileOps {
                 try { isDir = FileSystem.isDirectory(full); } catch (e) {}
                 if (entry.toLowerCase().indexOf(needle) != -1)
                     results.push({path: full, name: entry, isDirectory: isDir});
-                if (isDir && dir.indexOf("/dev") != 0)
-                    walk(full);
+                if (isDir && dir.indexOf("/dev") != 0 && !isLink(dir, full))
+                    walk(full, depth + 1);
             }
         }
-        walk(root);
+        walk(root, 0);
         return {results: results, truncated: truncated};
     }
 
     // ---- copy / move / delete ----
 
-    public static function copy(source:String, destination:String):Void {
+    public static function copy(source:String, destination:String, depth:Int = 0):Void {
+        if (depth > MAX_DEPTH)
+            throw "Folder nesting too deep";
         if (FileSystem.isDirectory(source)) {
             if (destination == source || destination.startsWith(source + "/"))
                 throw "Cannot copy a folder into itself";
             if (!FileSystem.exists(destination)) FileSystem.createDirectory(destination);
-            for (entry in FileSystem.readDirectory(source))
-                copy(source + "/" + entry, destination + "/" + entry);
+            for (entry in FileSystem.readDirectory(source)) {
+                if (isLink(source, source + "/" + entry))
+                    continue; // symlinks are not followed
+                copy(source + "/" + entry, destination + "/" + entry, depth + 1);
+            }
         } else {
             var input = File.read(source, true);
             var output = File.write(destination + ".copying", true);
@@ -83,6 +99,8 @@ class FileOps {
     }
 
     public static function move(source:String, destination:String):Void {
+        if (isProtected(source))
+            throw "Refusing to move protected path " + source;
         if (FileSystem.exists(destination))
             throw "Destination exists: " + destination;
         try {
@@ -93,12 +111,21 @@ class FileOps {
         }
     }
 
-    public static function remove(path:String):Void {
+    public static function remove(path:String, depth:Int = 0):Void {
         if (isProtected(path))
             throw "Refusing to delete protected path " + path;
+        if (depth > MAX_DEPTH)
+            throw "Folder nesting too deep";
         if (FileSystem.isDirectory(path)) {
-            for (entry in FileSystem.readDirectory(path))
-                remove(path + "/" + entry);
+            for (entry in FileSystem.readDirectory(path)) {
+                var child = path + "/" + entry;
+                if (isLink(path, child)) {
+                    // Remove the link itself, never what it points to.
+                    try { FileSystem.deleteFile(child); } catch (e) {}
+                    continue;
+                }
+                remove(child, depth + 1);
+            }
             FileSystem.deleteDirectory(path);
         } else {
             FileSystem.deleteFile(path);
@@ -112,10 +139,13 @@ class FileOps {
             throw "Output exists";
         var entries = new List<haxe.zip.Entry>();
         var total = 0;
-        function add(full:String, name:String):Void {
+        function add(full:String, name:String, depth:Int):Void {
+            if (depth > MAX_DEPTH)
+                throw "Folder nesting too deep";
             if (FileSystem.isDirectory(full)) {
                 for (e in FileSystem.readDirectory(full))
-                    add(full + "/" + e, name + "/" + e);
+                    if (!isLink(full, full + "/" + e))
+                        add(full + "/" + e, name + "/" + e, depth + 1);
                 return;
             }
             var size = FileSystem.stat(full).size;
@@ -129,7 +159,7 @@ class FileOps {
             });
         }
         for (p in paths)
-            add(p, Path.withoutDirectory(p));
+            add(p, Path.withoutDirectory(p), 0);
 
         var out = File.write(output + ".tmp", true);
         new haxe.zip.Writer(out).write(entries);
@@ -144,6 +174,7 @@ class FileOps {
         var entries = haxe.zip.Reader.readZip(new haxe.io.BytesInput(File.getBytes(archive)));
         if (!FileSystem.exists(destination)) FileSystem.createDirectory(destination);
         var count = 0;
+        var total = 0;
         for (entry in entries) {
             var name = entry.fileName;
             if (name.indexOf("..") != -1 || name.startsWith("/") || name.indexOf("\\") != -1)
@@ -155,10 +186,12 @@ class FileOps {
             }
             var dir = Path.directory(target);
             if (!FileSystem.exists(dir)) FileSystem.createDirectory(dir);
-            var data = entry.data;
-            if (entry.compressed)
-                data = haxe.zip.Uncompress.run(data);
-            File.saveBytes(target, data);
+            total += entry.fileSize;
+            if (entry.fileSize > MAX_ZIP_TOTAL || total > MAX_ZIP_TOTAL)
+                throw "Archive expands beyond 256 MB";
+            // zip entries are raw deflate; Reader.unzip handles that (Uncompress.run expects a zlib header).
+            haxe.zip.Reader.unzip(entry);
+            File.saveBytes(target, entry.data);
             count++;
         }
         return count;
@@ -181,8 +214,7 @@ class FileOps {
         if (content.length > MAX_TEXT_SIZE)
             throw "Content too large (limit 1 MB)";
         File.saveContent(path + ".saving", content);
-        if (FileSystem.exists(path)) FileSystem.deleteFile(path);
-        FileSystem.rename(path + ".saving", path);
+        FileSystem.rename(path + ".saving", path); // rename(2) replaces the target atomically
     }
 
     public static function readHex(path:String, offset:Int, length:Int):Dynamic {

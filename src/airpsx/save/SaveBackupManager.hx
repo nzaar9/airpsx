@@ -22,12 +22,17 @@ class SaveBackupManager {
     public static function config():Dynamic {
         return {
             enabled: SettingsUtils.get("backup.enabled", "0") == "1",
-            intervalHours: Std.parseInt(SettingsUtils.get("backup.intervalHours", "24")),
+            intervalHours: positive(SettingsUtils.get("backup.intervalHours", "24"), 24),
             destination: SettingsUtils.get("backup.destination", '${Const.DATA_PATH}/backups'),
-            keep: Std.parseInt(SettingsUtils.get("backup.keep", "5")),
+            keep: positive(SettingsUtils.get("backup.keep", "5"), 5),
             profileId: SettingsUtils.get("backup.profileId", ""),
             lastRun: SettingsUtils.get("backup.lastRun", "")
         };
+    }
+
+    static function positive(value:String, fallback:Int):Int {
+        var n = Std.parseInt(value);
+        return (n == null || n < 1) ? fallback : n;
     }
 
     /** Returns an error message, or null when the destination is usable. */
@@ -72,15 +77,14 @@ class SaveBackupManager {
     static function backup(silent:Bool):Void {
         var cfg = config();
         var dir:String = cfg.destination;
-        var error = checkDestination(dir);
         var id = -1;
         var finalPath = "";
+        // Count the attempt first so a failing destination is retried at the configured interval, not every minute.
+        SettingsUtils.set("backup.lastRun", Std.string(Sys.time()));
+        var error = checkDestination(dir);
         try {
             if (error != null) throw error;
             if (!FileSystem.exists(dir)) FileSystem.createDirectory(dir);
-
-            // Count the attempt so a failing destination is retried at the configured interval, not every minute.
-            SettingsUtils.set("backup.lastRun", Std.string(Sys.time()));
 
             var stamp = DateTools.format(Date.now(), "%Y%m%d_%H%M%S");
             var profile:String = cfg.profileId;

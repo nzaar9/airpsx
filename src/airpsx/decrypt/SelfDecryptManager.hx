@@ -62,8 +62,16 @@ class SelfDecryptManager {
         try {
             while (true) {
                 var rs = DBStatic.query('SELECT id, path, output FROM decrypt_jobs WHERE status = \'pending\' ORDER BY id LIMIT 1');
-                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled())
-                    break;
+                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled()) {
+                    // Decide to exit and clear the flag under one lock, then re-check, so an enqueue racing with
+                    // the exit either sees the worker still running or starts a new one.
+                    lock.acquire();
+                    var again = rs.hasNext() ? false : DBStatic.query('SELECT 1 FROM decrypt_jobs WHERE status = \'pending\' LIMIT 1').hasNext() && !airpsx.utils.MaintenanceUtils.enabled();
+                    if (!again) workerRunning = false;
+                    lock.release();
+                    if (again) continue;
+                    return;
+                }
                 var job:Dynamic = rs.next();
                 var id:Int = job.id;
                 // Persist state before touching the file: a panic mid-dump must leave the job resumable.
@@ -81,9 +89,9 @@ class SelfDecryptManager {
             }
         } catch (e) {
             trace('decrypt worker stopped: ${e}');
+            lock.acquire();
+            workerRunning = false;
+            lock.release();
         }
-        lock.acquire();
-        workerRunning = false;
-        lock.release();
     }
 }

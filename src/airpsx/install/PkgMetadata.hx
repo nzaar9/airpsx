@@ -86,7 +86,8 @@ class PkgMetadata {
                 } else {
                     if (!FileSystem.exists(ICON_PATH))
                         FileSystem.createDirectory(ICON_PATH);
-                    var iconFile = '${ICON_PATH}/${info.contentId}.png';
+                    var safeName = ~/[^A-Za-z0-9_\-]/g.replace(info.contentId, "_");
+                    var iconFile = '${ICON_PATH}/${safeName}.png';
                     File.saveBytes(iconFile, data);
                     info.iconPath = iconFile;
                 }

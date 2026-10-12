@@ -90,8 +90,16 @@ class InstallQueueManager {
         try {
             while (true) {
                 var rs = DBStatic.query('SELECT id, source, name FROM install_queue WHERE status = \'pending\' ORDER BY id LIMIT 1');
-                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled())
-                    break;
+                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled()) {
+                    // Decide to exit and clear the flag under one lock, then re-check, so an enqueue racing with
+                    // the exit either sees the worker still running or starts a new one.
+                    lock.acquire();
+                    var again = rs.hasNext() ? false : DBStatic.query('SELECT 1 FROM install_queue WHERE status = \'pending\' LIMIT 1').hasNext() && !airpsx.utils.MaintenanceUtils.enabled();
+                    if (!again) workerRunning = false;
+                    lock.release();
+                    if (again) continue;
+                    return;
+                }
                 var job:Dynamic = rs.next();
                 var id:Int = job.id;
                 DBStatic.query('UPDATE install_queue SET status = \'running\', updatedAt = datetime(\'now\',\'localtime\') WHERE id = ?', id);
@@ -100,7 +108,9 @@ class InstallQueueManager {
                     if (!source.startsWith("http") && !FileSystem.exists(source))
                         throw "File not found";
                     #if orbis
-                    LibSceAppInstUtil.appInstUtilInstallByPackage(source, job.name);
+                    var code:Int = LibSceAppInstUtil.appInstUtilInstallByPackage(source, job.name);
+                    if (code != 0)
+                        throw 'Installer rejected the package (code ${code})';
                     #else
                     throw "Installing is only supported on the console";
                     #end
@@ -112,9 +122,9 @@ class InstallQueueManager {
             }
         } catch (e) {
             trace('install worker stopped: ${e}');
+            lock.acquire();
+            workerRunning = false;
+            lock.release();
         }
-        lock.acquire();
-        workerRunning = false;
-        lock.release();
     }
 }
