@@ -18,6 +18,7 @@ import sys.ssl.Socket;
 import sys.thread.Thread;
 import hx.well.route.ApiRoute;
 import airpsx.command.TaskExecuteCommand;
+import airpsx.command.SaveBackupCommand;
 import hx.well.facades.Schedule;
 import airpsx.command.KillServePackageCommand;
 import airpsx.hscript.HScriptData;
@@ -67,11 +68,13 @@ class BootProvider extends AbstractProvider {
         // register commands
         CommandExecutor.register(TaskExecuteCommand);
         CommandExecutor.register(TemperatureLogCommand);
+        CommandExecutor.register(SaveBackupCommand);
         CommandExecutor.register(TimestampUpdateCommand);
         CommandExecutor.register(KillServePackageCommand);
 
         #if orbis
         Schedule.get().fixedRate("package:kill-serve", 1000);
+        Schedule.get().fixedRate("savebackup:run", 60000, 60000);
         #end
 
         // set config

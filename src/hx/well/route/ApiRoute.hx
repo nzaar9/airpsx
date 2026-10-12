@@ -46,6 +46,11 @@ import hx.well.handler.filesystem.FileSystemUploadSessionInitHandler;
 import hx.well.handler.filesystem.FileSystemUploadSessionChunkHandler;
 import hx.well.handler.filesystem.FileSystemUploadSessionStatusHandler;
 import hx.well.handler.filesystem.FileSystemUploadSessionCancelHandler;
+import hx.well.handler.save.SaveBackupConfigHandler;
+import hx.well.handler.save.SaveBackupRunHandler;
+import hx.well.handler.save.SaveBackupListHandler;
+import hx.well.handler.save.SaveBackupRestoreHandler;
+import hx.well.handler.save.SaveBackupDeleteHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -204,6 +209,23 @@ class ApiRoute extends RouteGroup {
         Route.get("/save/backup/{profileId?}")
             .handler(new SaveBackupHandler())
             .where("profileId", "[0-9a-f]{8}");
+
+        Route.path("/save/backups").group(() -> {
+            Route.post("/config")
+                .handler(new SaveBackupConfigHandler());
+
+            Route.post("/run")
+                .handler(new SaveBackupRunHandler());
+
+            Route.get("/list")
+                .handler(new SaveBackupListHandler());
+
+            Route.post("/restore")
+                .handler(new SaveBackupRestoreHandler());
+
+            Route.post("/delete")
+                .handler(new SaveBackupDeleteHandler());
+        });
         #end
 
         Route.path("/task").group(() -> {

@@ -41,6 +41,10 @@ class SetupDatabaseCommand extends AbstractCommand<Bool> {
         db.request("CREATE TABLE IF NOT EXISTS decrypt_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, output TEXT, status TEXT DEFAULT 'pending', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
         db.request("UPDATE decrypt_jobs SET status = 'pending' WHERE status = 'running';");
 
+        // Scheduled save backups
+        db.request("CREATE TABLE IF NOT EXISTS save_backups (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, size INTEGER DEFAULT 0, profileId TEXT DEFAULT '', status TEXT DEFAULT 'running', error TEXT, createdAt DATE DEFAULT (datetime('now','localtime')));");
+        db.request("UPDATE save_backups SET status = 'failed', error = 'interrupted' WHERE status = 'running';");
+
         // Resumable upload sessions
         db.request("CREATE TABLE IF NOT EXISTS upload_sessions (id TEXT PRIMARY KEY, path TEXT, size INTEGER, received INTEGER DEFAULT 0, status TEXT DEFAULT 'uploading', createdAt DATE DEFAULT (datetime('now','localtime')), updatedAt DATE);");
 
