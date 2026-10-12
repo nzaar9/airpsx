@@ -22,6 +22,7 @@ class ApiDocsHandler extends AbstractHandler {
         {m: "POST", p: "/fs/upload-session/chunk", d: "Upload a chunk. Query: id, offset; raw body"},
         {m: "GET", p: "/fs/upload-session/status", d: "Upload session state. Query: id?"},
         {m: "POST", p: "/fs/upload-session/cancel", d: "Cancel an upload: {id}"},
+        {m: "POST", p: "/fs/rename", d: "Rename a file or folder in place: {path, name}"},
         {m: "POST", p: "/fs/search", d: "Name search: {path, query, limit?}"},
         {m: "POST", p: "/fs/batch", d: "Multi-select copy/move/delete: {op, paths, destination?} -> job"},
         {m: "POST", p: "/fs/archive", d: "zip/unzip: {action, paths|path, output|destination} -> job"},

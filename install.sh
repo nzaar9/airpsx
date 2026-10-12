@@ -41,6 +41,7 @@ if [[ "$installSDK" == "true" ]]; then
     # Install Latest SDK
     wget -P /opt https://github.com/ps5-payload-dev/sdk/releases/latest/download/ps5-payload-sdk.zip
     sudo unzip -d /opt /opt/ps5-payload-sdk.zip
+    sudo chmod -R +x /opt/ps5-payload-sdk/bin /opt/ps5-payload-sdk/toolchain
 fi
 
 # Install Haxe Libraries
@@ -56,10 +57,10 @@ haxelib install uuid
 
 # Install HXCPP
 mkdir -p ~/haxelib/hxcpp
-if [ ! -d "$HOME/haxelib/hxcpp/ps5-payload" ]; then
-  git clone https://github.com/barisyild/hxcpp/ --branch ps5-payload ~/haxelib/hxcpp/ps5-payload
-  echo ps5-payload > ~/haxelib/hxcpp/.current
+if [ ! -d "$HOME/haxelib/hxcpp/orbis-payload" ]; then
+  git clone https://github.com/barisyild/hxcpp/ --branch orbis-payload ~/haxelib/hxcpp/orbis-payload
+  echo orbis-payload > ~/haxelib/hxcpp/.current
 else
-  cd ~/haxelib/hxcpp/ps5-payload/ && git pull
+  cd ~/haxelib/hxcpp/orbis-payload/ && git pull
 fi
-cd ~/haxelib/hxcpp/ps5-payload/tools/hxcpp/ && haxe compile.hxml
+cd ~/haxelib/hxcpp/orbis-payload/tools/hxcpp/ && haxe compile.hxml

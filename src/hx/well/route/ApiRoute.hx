@@ -52,6 +52,7 @@ import hx.well.handler.save.SaveBackupListHandler;
 import hx.well.handler.save.SaveBackupRestoreHandler;
 import hx.well.handler.save.SaveBackupDeleteHandler;
 import hx.well.handler.filesystem.FileSystemSearchHandler;
+import hx.well.handler.filesystem.FileSystemRenameHandler;
 import hx.well.handler.filesystem.FileSystemBatchHandler;
 import hx.well.handler.filesystem.FileSystemArchiveHandler;
 import hx.well.handler.filesystem.FileSystemJobHandler;
@@ -137,6 +138,9 @@ class ApiRoute extends RouteGroup {
                 .handler(new FileSystemUploadHandler())
                 .setStream(true)
                 .where("path", ".*");
+
+            Route.post("/rename")
+                .handler(new FileSystemRenameHandler());
 
             Route.post("/search")
                 .handler(new FileSystemSearchHandler());
