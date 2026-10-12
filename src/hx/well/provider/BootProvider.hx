@@ -126,6 +126,10 @@ class BootProvider extends AbstractProvider {
         //commandExecutor.addCommand(new SchedulerCommand());
         commandExecutor.execute();
 
+        #if orbis
+        airpsx.decrypt.SelfDecryptManager.resume();
+        #end
+
         // api group
         Route.path("/api")
             .group(ApiRoute);

@@ -36,6 +36,13 @@ class TimestampUpdateCommand extends AbstractCommand<Bool> {
 
         Schedule.get().fixedRate("task:execute", 60000, 60000);
 
+        // "boot" triggers run once, on the first timestamp sync after start (future is cancelled above).
+        try {
+            airpsx.task.TaskEvents.fire(airpsx.task.TaskTrigger.BOOT);
+        } catch (e) {
+            trace('boot event failed: ${e}');
+        }
+
         return cast true;
     }
 }

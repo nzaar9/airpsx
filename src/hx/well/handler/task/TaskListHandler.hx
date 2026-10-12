@@ -8,6 +8,6 @@ import airpsx.type.DatabaseType;
 
 class TaskListHandler extends AbstractHandler {
     public function execute(request:Request):AbstractResponse {
-        return DBStatic.connection(DatabaseType.TASK).query('SELECT id, name, status, lastRun, enabled FROM tasks');
+        return DBStatic.connection(DatabaseType.TASK).query('SELECT id, name, status, lastRun, enabled, triggerType, triggerValue FROM tasks');
     }
 }

@@ -36,7 +36,7 @@ class TaskExecuteCommand extends AbstractCommand<Bool> {
         try {
             trace("execute");
             var db = DBStatic.connection(DatabaseType.TASK);
-            var resultSet = db.query('SELECT id, type, script, frequency, logs, lastRun FROM tasks WHERE enabled = 1 and script <> ""');
+            var resultSet = db.query('SELECT id, type, script, frequency, logs, lastRun FROM tasks WHERE enabled = 1 and script <> "" and (triggerType = "cron" or triggerType is null)');
             var results = resultSet.results();
             while (results.length > 0)
             {
@@ -46,46 +46,7 @@ class TaskExecuteCommand extends AbstractCommand<Bool> {
                 var lastRunDate:Date = Date.fromString(result.lastRun ?? Date.fromTime(0).toString());
                 if(lastRunDate.getTime() + ((frequency - 30) * 1000) < Date.now().getTime())
                 {
-                    var id:Int = result.id;
-                    trace('execute task ${id}');
-
-                    //taskData = {id: id, startAt: Date.now().getTime() / 1000};
-
-                    // Update task state to running
-                    db.query('UPDATE tasks SET status = ? WHERE id = ?', TaskStatus.RUNNING, id);
-
-                    var script:String = result.script;
-                    var type:ScriptType = result.type;
-
-                    var filePath:String = '${Const.DATA_PATH}/task/';
-                    if(!FileSystem.exists(filePath))
-                        FileSystem.createDirectory(filePath);
-
-
-                    var logs:Bool = TypeUtils.parseBool(result.logs);
-                    var result:Dynamic = null;
-                    var output:Output;
-                    if(logs)
-                    {
-                        output = File.append('${filePath}/${id}.log');
-                    }else{
-                        output = new NullOutput();
-                    }
-
-                    var executionMilliseconds:Float = haxe.Timer.stamp();
-                    output.writeString('[${Date.now()}] execute start\n');
-                    try {
-                        result = ScriptUtils.execute(script, type, output);
-                    } catch (e) {
-
-                    }
-                    var isSuccess:Bool = TypeUtils.parseBool(result);
-                    var increaseKey:String = isSuccess ? "success" : "failed";
-
-                    // Update task state to idle
-                    db.query('UPDATE tasks SET status = ?, lastRun = datetime(\'now\',\'localtime\'), ${increaseKey} = ${increaseKey} + 1 WHERE id = ?', TaskStatus.IDLE, id);
-
-                    output.writeString('[${Date.now()}] execution ${increaseKey}, took ${haxe.Timer.stamp() - executionMilliseconds}ms\n');
+                    airpsx.task.TaskRunner.run(result);
                 }
             }
         } catch (e) {

@@ -32,6 +32,12 @@ import hx.well.handler.task.TaskListHandler;
 import hx.well.handler.task.TaskUpdateHandler;
 import hx.well.handler.task.TaskStatusHandler;
 import hx.well.handler.task.TaskLogHandler;
+import hx.well.handler.stats.StatsHistoryHandler;
+import hx.well.handler.stats.StatsPlaytimeHandler;
+import hx.well.handler.stats.AlertSettingsHandler;
+import hx.well.handler.decrypt.DecryptEnqueueHandler;
+import hx.well.handler.decrypt.DecryptListHandler;
+import hx.well.handler.decrypt.DecryptCancelHandler;
 import hx.well.handler.KillServerHandler;
 import hx.well.handler.BlankHandler;
 import hx.well.handler.script.remote.RemoteScriptListHandler;
@@ -189,6 +195,30 @@ class ApiRoute extends RouteGroup {
             Route.post("/log")
                 .handler(new TaskLogHandler());
         });
+
+        Route.path("/stats").group(() -> {
+            Route.get("/history")
+                .handler(new StatsHistoryHandler());
+
+            Route.get("/playtime")
+                .handler(new StatsPlaytimeHandler());
+
+            Route.post("/alert")
+                .handler(new AlertSettingsHandler());
+        });
+
+        #if orbis
+        Route.path("/decrypt").group(() -> {
+            Route.post("/enqueue")
+                .handler(new DecryptEnqueueHandler());
+
+            Route.get("/list")
+                .handler(new DecryptListHandler());
+
+            Route.post("/cancel")
+                .handler(new DecryptCancelHandler());
+        });
+        #end
 
         Route.post("/server/kill")
             .handler(new KillServerHandler());

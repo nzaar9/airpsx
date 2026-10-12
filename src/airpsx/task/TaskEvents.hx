@@ -1,0 +1,67 @@
+package airpsx.task;
+import sys.thread.Thread;
+import hx.well.facades.DBStatic;
+import airpsx.type.DatabaseType;
+
+class TaskEvents {
+    static var lastTitleID:String = "";
+    static var tempActive:Map<Int, Bool> = new Map();
+    static var initialized:Bool = false;
+
+    /** Fire all enabled tasks bound to `trigger`. `filter` is matched against triggerValue when the task sets one. */
+    public static function fire(trigger:String, ?filter:String, ?extra:Map<String, Any>):Void {
+        var db = DBStatic.connection(DatabaseType.TASK);
+        var rows:Array<Dynamic> = [];
+        var rs = db.query('SELECT id, type, script, logs, triggerValue FROM tasks WHERE enabled = 1 AND script <> "" AND triggerType = ? AND status = 0', trigger);
+        while (rs.hasNext())
+            rows.push(rs.next());
+
+        for (row in rows) {
+            var value:String = row.triggerValue;
+            if (filter != null && value != null && value != "" && value != filter)
+                continue;
+            // Run off the scheduler thread so a long script cannot stall stats logging.
+            Thread.create(() -> {
+                try { TaskRunner.run(row, extra); } catch (e) { trace('event task failed: ${e}'); }
+            });
+        }
+    }
+
+    /** Called once per stats tick (60s) with the current readings. */
+    public static function onTick(titleID:String, temperature:Int):Void {
+        if (!initialized) {
+            // First tick: treat the current state as baseline, don't report a "launch" for an already-running game.
+            initialized = true;
+            lastTitleID = titleID;
+        } else if (titleID != lastTitleID) {
+            if (lastTitleID != "")
+                fire(TaskTrigger.GAME_CLOSE, lastTitleID, ["titleID" => lastTitleID]);
+            if (titleID != "")
+                fire(TaskTrigger.GAME_LAUNCH, titleID, ["titleID" => titleID]);
+            lastTitleID = titleID;
+        }
+
+        // temp_above fires once per task on the rising edge and re-arms when the temperature drops below its threshold.
+        var db = DBStatic.connection(DatabaseType.TASK);
+        var rs = db.query('SELECT id, type, script, logs, triggerValue FROM tasks WHERE enabled = 1 AND script <> "" AND triggerType = ? AND status = 0', TaskTrigger.TEMP_ABOVE);
+        var rows:Array<Dynamic> = [];
+        while (rs.hasNext())
+            rows.push(rs.next());
+        for (row in rows) {
+            var id:Int = row.id;
+            var threshold = Std.parseInt(Std.string(row.triggerValue));
+            if (threshold == null)
+                continue;
+            if (temperature >= threshold) {
+                if (!tempActive.exists(id)) {
+                    tempActive.set(id, true);
+                    Thread.create(() -> {
+                        try { TaskRunner.run(row, ["temperature" => temperature, "titleID" => titleID]); } catch (e) {}
+                    });
+                }
+            } else {
+                tempActive.remove(id);
+            }
+        }
+    }
+}

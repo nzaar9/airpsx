@@ -23,6 +23,8 @@ class TaskUpdateHandler extends AbstractHandler {
         "logs",
         "type",
         "enabled",
+        "triggerType",
+        "triggerValue",
     ];
 
     public override function validate():Bool {
@@ -34,7 +36,9 @@ class TaskUpdateHandler extends AbstractHandler {
             "frequency" => [ValidatorRule.Int],
             "logs" => [ValidatorRule.Bool],
             "type" => [ValidatorRule.String],
-            "enabled" => [ValidatorRule.Bool]
+            "enabled" => [ValidatorRule.Bool],
+            "triggerType" => [ValidatorRule.String],
+            "triggerValue" => [ValidatorRule.String]
         ]);
     }
 
@@ -63,6 +67,12 @@ class TaskUpdateHandler extends AbstractHandler {
 
                 return {error: '${e.toString()} ${e.stack.toString()}'};
             }
+        }
+
+        var triggerType:String = request.input("triggerType");
+        if(triggerType != null && !airpsx.task.TaskTrigger.all.contains(triggerType))
+        {
+            return {error: 'unknown triggerType.'};
         }
 
         var name:String = request.input("name");
