@@ -3,6 +3,7 @@ import sys.FileSystem;
 import sys.thread.Thread;
 import sys.thread.Mutex;
 import hx.well.facades.DBStatic;
+import airpsx.utils.DbUtils;
 using StringTools;
 
 /**
@@ -38,14 +39,13 @@ class SelfDecryptManager {
 
     public static function cancel(id:Int):Bool {
         DBStatic.query('UPDATE decrypt_jobs SET status = \'cancelled\', updatedAt = datetime(\'now\',\'localtime\') WHERE id = ? AND status = \'pending\'', id);
-        var rs = DBStatic.query('SELECT status FROM decrypt_jobs WHERE id = ?', id);
-        return rs.hasNext() && rs.next().status == "cancelled";
+        var row:Dynamic = DbUtils.first('SELECT status FROM decrypt_jobs WHERE id = ?', id);
+        return row != null && row.status == "cancelled";
     }
 
     /** Called at boot to continue jobs interrupted by a restart or crash. */
     public static function resume():Void {
-        var rs = DBStatic.query('SELECT COUNT(*) AS c FROM decrypt_jobs WHERE status = \'pending\'');
-        if (rs.hasNext() && (rs.next().c : Int) > 0)
+        if (DbUtils.exists('SELECT 1 FROM decrypt_jobs WHERE status = \'pending\' LIMIT 1'))
             ensureWorker();
     }
 
@@ -55,24 +55,27 @@ class SelfDecryptManager {
         workerRunning = true;
         lock.release();
         if (start)
-            Thread.create(work);
+            Thread.create(() -> {
+                try { work(); } catch (e) {}
+                // A thread's database connections are only released explicitly; without this each worker run leaks one.
+                hx.well.database.Connection.free();
+            });
     }
 
     static function work():Void {
         try {
             while (true) {
-                var rs = DBStatic.query('SELECT id, path, output FROM decrypt_jobs WHERE status = \'pending\' ORDER BY id LIMIT 1');
-                if (!rs.hasNext() || airpsx.utils.MaintenanceUtils.enabled()) {
+                var job:Dynamic = DbUtils.first('SELECT id, path, output FROM decrypt_jobs WHERE status = \'pending\' ORDER BY id LIMIT 1');
+                if (job == null || airpsx.utils.MaintenanceUtils.enabled()) {
                     // Decide to exit and clear the flag under one lock, then re-check, so an enqueue racing with
                     // the exit either sees the worker still running or starts a new one.
                     lock.acquire();
-                    var again = rs.hasNext() ? false : DBStatic.query('SELECT 1 FROM decrypt_jobs WHERE status = \'pending\' LIMIT 1').hasNext() && !airpsx.utils.MaintenanceUtils.enabled();
+                    var again = job == null && DbUtils.exists('SELECT 1 FROM decrypt_jobs WHERE status = \'pending\' LIMIT 1') && !airpsx.utils.MaintenanceUtils.enabled();
                     if (!again) workerRunning = false;
                     lock.release();
                     if (again) continue;
                     return;
                 }
-                var job:Dynamic = rs.next();
                 var id:Int = job.id;
                 // Persist state before touching the file: a panic mid-dump must leave the job resumable.
                 DBStatic.query('UPDATE decrypt_jobs SET status = \'running\', updatedAt = datetime(\'now\',\'localtime\') WHERE id = ?', id);

@@ -47,15 +47,15 @@ class TaskUpdateHandler extends AbstractHandler {
 
         var db = DBStatic.connection(DatabaseType.TASK);
         var id:Int = request.input("id");
-        var resultSet = db.query('SELECT id FROM tasks WHERE id = ?', id);
-        if(!resultSet.hasNext())
+        var existing = db.select('SELECT id, type FROM tasks WHERE id = ?', id);
+        if(existing.length == 0)
         {
             return {error: "Task not found"};
         }
 
         // Check Script
         var script:String = request.input("script");
-        var type:ScriptType = request.input("type", resultSet.next().type);
+        var type:ScriptType = request.input("type", existing[0].type);
         if(type == ScriptType.RULESCRIPT && script != null && script != "")
         {
             try
@@ -98,12 +98,12 @@ class TaskUpdateHandler extends AbstractHandler {
 
         db.query('UPDATE tasks SET ${updateQuery} WHERE id = ?', id);
 
-        var resultSet = db.query('SELECT ${selectQuery} FROM tasks WHERE id = ?', id);
-        if(!resultSet.hasNext())
+        var updated = db.select('SELECT ${selectQuery} FROM tasks WHERE id = ?', id);
+        if(updated.length == 0)
         {
             return {"message": "Task not found"};
         }
 
-        return resultSet.next();
+        return updated[0];
     }
 }

@@ -67,6 +67,7 @@ class SaveBackupManager {
 
         Thread.create(() -> {
             try { backup(silent); } catch (e) { trace('backup failed: ${e}'); }
+            hx.well.database.Connection.free(); // release this thread's database connections
             stateLock.acquire();
             running = false;
             stateLock.release();
@@ -119,18 +120,16 @@ class SaveBackupManager {
     static function prune(dir:String, keep:Int, profile:String):Void {
         if (keep < 1)
             return;
-        var rs = DBStatic.query('SELECT id, path FROM save_backups WHERE status = \'done\' AND profileId = ? ORDER BY id DESC LIMIT -1 OFFSET ?', profile, keep);
-        var old:Array<Dynamic> = [];
-        while (rs.hasNext()) old.push(rs.next());
+        var old:Array<Dynamic> = DBStatic.select('SELECT id, path FROM save_backups WHERE status = \'done\' AND profileId = ? ORDER BY id DESC LIMIT -1 OFFSET ?', profile, keep);
         for (row in old)
             delete(row.id);
     }
 
     public static function delete(id:Int):Bool {
-        var rs = DBStatic.query('SELECT path FROM save_backups WHERE id = ?', id);
-        if (!rs.hasNext())
+        var row:Dynamic = airpsx.utils.DbUtils.first('SELECT path FROM save_backups WHERE id = ?', id);
+        if (row == null)
             return false;
-        var path:String = rs.next().path;
+        var path:String = row.path;
         try { if (FileSystem.exists(path)) FileSystem.deleteFile(path); } catch (e) { return false; }
         DBStatic.query('DELETE FROM save_backups WHERE id = ?', id);
         return true;
@@ -140,10 +139,10 @@ class SaveBackupManager {
     public static function restore(id:Int, ?profileId:String):Dynamic {
         if (Process.getRunningApp() != null)
             return {error: "Close the running game before restoring saves"};
-        var rs = DBStatic.query('SELECT path FROM save_backups WHERE id = ? AND status = \'done\'', id);
-        if (!rs.hasNext())
+        var row:Dynamic = airpsx.utils.DbUtils.first('SELECT path FROM save_backups WHERE id = ? AND status = \'done\'', id);
+        if (row == null)
             return {error: "Backup not found"};
-        var path:String = rs.next().path;
+        var path:String = row.path;
         if (!FileSystem.exists(path))
             return {error: "Backup file is missing (is the drive mounted?)"};
         try {

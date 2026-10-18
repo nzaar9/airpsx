@@ -27,6 +27,7 @@ class TaskEvents {
             var copy:Map<String, Any> = extra == null ? null : [for (k => v in extra) k => v];
             Thread.create(() -> {
                 try { TaskRunner.run(row, copy); } catch (e) { trace('event task failed: ${e}'); }
+                hx.well.database.Connection.free(); // release this thread's database connections
             });
         }
     }
@@ -72,6 +73,7 @@ class TaskEvents {
                     tempActive.set(id, true);
                     Thread.create(() -> {
                         try { TaskRunner.run(row, ["temperature" => temperature, "titleID" => titleID]); } catch (e) {}
+                        hx.well.database.Connection.free(); // release this thread's database connections
                     });
                 }
             } else {

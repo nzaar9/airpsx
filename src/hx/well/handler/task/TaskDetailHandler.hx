@@ -24,10 +24,11 @@ class TaskDetailHandler extends AbstractHandler {
     public function execute(request:Request):AbstractResponse {
         var id:Int = request.input("id");
 
-        var resultSet = DBStatic.connection(DatabaseType.TASK).query('SELECT * FROM tasks WHERE id = ?', id);
-        if(!resultSet.hasNext())
+        // select() reads the whole result so no half-read statement keeps the database locked
+        var rows = DBStatic.connection(DatabaseType.TASK).select('SELECT * FROM tasks WHERE id = ?', id);
+        if(rows.length == 0)
             return {"message": "Task not found"};
 
-        return resultSet.next();
+        return rows[0];
     }
 }

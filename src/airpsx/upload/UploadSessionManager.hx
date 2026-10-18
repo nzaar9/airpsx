@@ -29,9 +29,9 @@ class UploadSessionManager {
             return {error: "file exists"};
 
         // Resume an unfinished session for the same file instead of starting over.
-        var rs = DBStatic.query('SELECT id FROM upload_sessions WHERE path = ? AND size = ? AND status = \'uploading\' ORDER BY createdAt DESC LIMIT 1', path, size);
-        if (rs.hasNext()) {
-            var existing = get(rs.next().id);
+        var prior:Dynamic = airpsx.utils.DbUtils.first('SELECT id FROM upload_sessions WHERE path = ? AND size = ? AND status = \'uploading\' ORDER BY createdAt DESC LIMIT 1', path, size);
+        if (prior != null) {
+            var existing = get(prior.id);
             if (existing != null && FileSystem.exists(path + ".part")) {
                 if (existing.received == size) // a previous finish failed part-way: retry it
                     return finish(existing);
